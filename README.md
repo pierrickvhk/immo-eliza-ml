@@ -1,174 +1,173 @@
-# Immo Eliza – House Price Prediction (Regression)
+# Immo Eliza – Belgian Real Estate Price Prediction (Regression)
 
-This repository contains a production-like, end-to-end regression pipeline to predict Belgian real-estate property prices for **Immo Eliza**.
-
-The project was built as a solo consolidation exercise with a clean, layered approach:
-
-- **v1** → load and inspect raw data
-- **v2** → first ML pipelines, model comparison
-- **v3** → tuned Random Forest with strong generalization
+A reusable and evaluated machine learning regression project built for the real estate company **Immo Eliza**, focused on predicting property prices in Belgium.
 
 ---
 
-## 1. Project Overview
+## 🎯 Goal
 
-**Goal:** Predict the selling price of a property in Belgium based on listing features such as number of bedrooms, equipment types, and various living surface areas.
-
-✅ The final model includes reusable preprocessing wrapped together with the model as a single `scikit-learn Pipeline`.
+Predict the selling price (**Price**) of a real-estate property using classical ML models, with a strong emphasis on reusable preprocessing pipelines and honest model evaluation.
 
 ---
 
-## 2. Repository Structure
+## 📁 Project Structure
 
 ```text
 immo-eliza-ml/
 ├─ data/
 │  ├─ raw/
-│  │  └─ immo_eliza_raw.csv            # raw input data
-│  └─ processed/                       # (optional) cleaned exports
+│  │  └─ immo_eliza_raw.csv              # original scraped dataset
+│  └─ processed/
+│     └─ immo_eliza_clean.csv            # cleaned & numeric-converted dataset (generated)
 ├─ models/
-│  └─ immo_eliza_random_forest.joblib  # final pipeline (preprocessing + model)
+│  └─ immo_eliza_random_forest.joblib             # final trained Pipeline (preprocessing + Random Forest)
 ├─ notebooks/
-│  └─ 01_immo_eliza_regression.ipynb   # notebook with v1, v2 and v3 experiments
+│  └─ 01_baseline_regression.ipynb     # experiments v1 → v3 with evaluation
 ├─ src/
-│  ├─ train.py                         # model training + saving script
-│  └─ predict.py                       # inference script with new dummy data
+│  ├─ data_utils.py                     # reusable loading + cleaning + preprocessing logic
+│  ├─ make_clean_data.py                # generates cleaned CSV for reuse
+│  ├─ train.py                          # trains & exports model pipeline
+│  └─ predict.py                        # loads model and predicts on dummy data
 ├─ requirements.txt
 └─ README.md
 ```
 
 ---
 
-## 3. Data & Preprocessing
+## 🧼 Data Cleaning & Preprocessing
 
-The dataset contains scraped Belgian real-estate listings with features such as:
+The project consumes raw scraped listings and converts them into an ML-ready format. Key reusable steps implemented in `data_utils.py` include:
 
-- Comfort features → `Number of bedrooms`, `Number of bathrooms`, `Number of toilets`, `Number of facades`
-- Surface areas → `Livable surface`, `Surface garden`, `Surface terrace`, `Total land surface`
-- Equipment → `Kitchen type`, `Type of heating`, `Type of glazing`, `Furnished`, `Terrace`, `Garden`, `Garage`, `Elevator`, `Swimming pool`
+### ✔ Cleaning
+- Remove duplicates
+- Convert `Price` from noisy text → `float`
+- Extract and convert hidden numerical surface features
+- Drop rows where Price could not be converted
 
-### Key Preprocessing Steps
-1. **Clean target (`Price`)**
-   - Remove `€` signs, spaces, text noise
-   - Normalize decimal separators
-   - Convert to `float`
-   - Drop rows where price is missing or invalid
+### 🔁 Reusable Preprocessor Pipeline
+A `ColumnTransformer` embedded within a `sklearn.Pipeline` applies:
 
-2. **Convert hidden text-based numerical features**
-   ✔ Livable, garden, terrace and land surfaces converted from text → float  
-   ✔ Non-numeric characters removed (e.g., `m²`, spaces, symbols)
+| Feature type | Transformation |
+|---|---|
+| Numeric | Median imputation + `StandardScaler()` |
+| Categorical | Most-frequent imputation + `OneHotEncoder(handle_unknown="ignore")` |
 
-3. **Drop low-signal identifier columns**
-   - `url`
-   - `Property ID`
-
-4. **Reusable preprocessing system**
-   - Numeric features -> imputed using `median` + standardized
-   - Categorical features -> imputed using `most_frequent` + One-Hot encoded
-   - Everything wrapped in a reusable sklearn `Pipeline` for reuse in scripts
+All transformations are encapsulated so the trained model can be reused safely during inference.
 
 ---
 
-## 4. Model Comparison & Final Results
+## 🤖 Model Training & Performance (v3)
 
-Three regression models were trained using the same pipeline (v2):
+Three regression models were evaluated in the notebook:
 
-1. **Linear Regression**
-2. **Random Forest Regressor**
-3. **Support Vector Regression (SVR)**
+1. `LinearRegression` (baseline)
+2. `RandomForestRegressor` (non-linear)
+3. `SVR` (non-linear comparison)
 
-Random Forest performed best on unseen test data and was selected and tuned (v3).
+### 🏆 Final Selected Model
+Random Forest performed best on unseen data after tuning. The final pipeline includes both preprocessing and a tuned `RandomForestRegressor`.
 
-### Final Tuned Model — Random Forest (`v3`)
-| Metric | Train | Test |
+| Metric | Train | Unseen Test |
 |---|---:|---:|
-| **MAE** | ~66,783 | ~97,186 |
-| **RMSE** | ~168,208 | ~206,821 |
-| **R²** | 0.738 | 0.618 |
+| **MAE** | 66,782.55 | 90,544.47 |
+| **RMSE** | 168,208.26 | 194,357.23 |
+| **R²** | 0.738 | 0.663 |
 
-### Conclusion
-- Random Forest shows the strongest performance on unseen data (R² ≈ 0.62)
-- Train/test gap is healthy -> **no heavy overfitting**
-- The model extracts meaningful signal despite noisy real-estate data
-- Linear Regression and SVR work as baselines but do not generalize as strongly
+✅ Strong generalization  
+✅ No heavy overfitting  
+✅ Realistic price error range for Belgian housing listings
+
+The final pipeline model is saved as:
+
+```text
+models/rf_price_model.joblib
+```
 
 ---
 
-## 5. How to Run the Project
+## 🔍 How to Run
 
-### 5.1. Environment Setup
+### 1. Create & Activate Virtual Environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/<your-username>/immo-eliza-ml.git
 cd immo-eliza-ml
-
-# Create and activate a virtual environment
 python3 -m venv venv
-source venv/bin/activate  # on Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
+```
 
-# Install dependencies
+### 2. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-Make sure your dataset is placed in:
-
-```text
-data/raw/immo_eliza_raw.csv
-```
-
----
-
-### 5.2. Train the Model (Notebook)
-
-Open:
-
-```text
-notebooks/01_immo_eliza_regression.ipynb
-```
-
-Run all cells.  
-The notebook will:
-
-1. load raw data
-2. clean the target
-3. convert surfaces to numeric
-4. build reusable preprocessing
-5. train and tune a Random Forest pipeline
-6. save the best pipeline to the `models/` folder
-
----
-
-### 5.3. Train the Model (CLI)
+### 3. Generate a Cleaned Dataset for Reuse
 
 ```bash
 cd src
-python train.py --data ../data/raw/immo_eliza_raw.csv --out ../models/immo_eliza_random_forest.joblib
+python make_clean_data.py --data ../data/raw/immo_eliza_raw.csv --out ../data/processed/immo_eliza_clean.csv
 ```
 
-This will:
+### 4. Train the Random Forest Pipeline
 
-✅ Train the Random Forest pipeline  
-✅ Evaluate on held-out test data  
-✅ Save the pipeline (preprocessing + model) to disk
+```bash
+cd src
+python train.py --data ../data/processed/immo_eliza_clean.csv --out ../models/immo_eliza_random_forest.joblib
+```
 
----
-
-### 5.4. Run a Prediction on a Dummy House
+### 5. Predict Price for Dummy House Data
 
 ```bash
 cd src
 python predict.py --model ../models/immo_eliza_random_forest.joblib
 ```
 
-Inside `predict.py` there is a `new_house` dictionary — you can edit it to test any new listing.
+You can edit the `new_house` dictionary inside `predict.py` to test new property data.
 
 ---
 
-## 6. Future Improvements
+## 🚀 Road to Mastery
 
-- Add more real-world feature engineering (postcode, province, build year, ...)
-- Try `log1p` transform on target or skewed numeric predictors
-- More extensive hyperparameter tuning (e.g., `GridSearchCV`)
-- Build an API or UI (e.g., Streamlit) on top of this model
-- Expand model comparison with Gradient Boosting regressors
+This project represents a personal milestone for me.
+
+I didn’t start by trying to build the most impressive model immediately —  
+instead, I invested a large portion of my time upfront into studying regression, preprocessing, pipelines, and model evaluation through structured courses and applied reading.
+
+That learning-first decision cost me time at the start, but it paid off:
+
+✔ I now understand every preprocessing transformation we applied  
+✔ I can explain why each model performs differently  
+✔ I built a reusable pipeline with confidence instead of trial-and-error  
+✔ The result is not only functional, but meaningful to me because I understand _how_ we got here  
+
+I’m genuinely happy with the outcome now, not only because the model performs well, but because I built it with understanding.
+
+---
+
+## ⭐ Future Improvements (Optional)
+
+If this project grows further, here are impactful refinements I would explore next:
+
+- **Feature engineering:**
+  - Extract structured province or postcode information from raw addresses or URLs
+  - Derive location clusters or median province prices as extra predictors
+  - Add year built, renovation status, energy score, proximity indicators, etc.
+
+- **Model expansion:**
+  - Reintroduce **XGBoost** or `GradientBoostingRegressor` as an exported 3rd model for saved model comparison
+  - Explore stacking or ensemble blending strategies
+
+- **Pipeline improvements:**
+  - Test `log1p` transform on target or skewed numeric fields for extra stability
+  - Replace `StandardScaler` with `RobustScaler` on surface fields if heavy outliers persist
+
+- **Evaluation improvements:**
+  - More exhaustive hyperparameter search using `GridSearchCV`
+  - Add cross-validation metric reporting to the README
+
+- **Deployment / UX:**
+  - Expose the model behind a lightweight API or Streamlit UI
+  - Build an interactive prediction page for customers to test new listings rapidly
+  - Export a small explainability dashboard using SHAP or permutation importance
+
+
